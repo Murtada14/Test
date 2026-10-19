@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Encoder / Decoder</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a1a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: floatParticle linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes floatParticle {
+            0% { transform: translateY(110vh) scale(0.5); opacity: 0; }
+            5% { opacity: 0.6; }
+            85% { opacity: 0.6; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(46, 213, 115, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(79, 172, 254, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 100%, rgba(102, 126, 234, 0.02) 0%, transparent 50%);
+            animation: backgroundMove 20s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes backgroundMove {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(2%, 2%) rotate(3deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: rgba(26, 26, 46, 0.85);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 28px;
+            padding: 30px 30px 20px;
+            max-width: 820px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: containerIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+        }
+
+        @keyframes containerIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 2px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            animation: pulseIcon 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseIcon {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, #2ed573, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header h1 .slash {
+            color: rgba(255, 255, 255, 0.1);
+            font-size: 18px;
+            background: none;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 .decoder-text {
+            background: linear-gradient(135deg, #4facfe, #2ed573);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 11px;
+            margin-top: 1px;
+            letter-spacing: 0.3px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(46, 213, 115, 0.12);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.15);
+            margin-top: 3px;
+        }
+
+        .divider {
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.3), transparent);
+            margin: 6px auto 12px;
+            border-radius: 2px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .grid .cell {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid .cell .cell-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .grid .cell .cell-header label {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        .grid .cell .cell-header .char-count {
+            color: rgba(255, 255, 255, 0.12);
+            font-size: 9px;
+        }
+
+        .grid .cell textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        .grid .cell textarea:focus {
+            outline: none;
+            border-color: rgba(46, 213, 115, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .grid .cell textarea::placeholder {
+            color: rgba(255, 255, 255, 0.08);
+        }
+
+        .grid .cell textarea[readonly] {
+            opacity: 0.8;
+        }
+
+        .cell-encode textarea {
+            border-color: rgba(46, 213, 115, 0.1);
+        }
+        .cell-encode .cell-header label {
+            color: #2ed573;
+        }
+
+        .cell-encoded textarea {
+            border-color: rgba(46, 213, 115, 0.08);
+        }
+        .cell-encoded .cell-header label {
+            color: rgba(46, 213, 115, 0.6);
+        }
+
+        .cell-decode textarea {
+            border-color: rgba(79, 172, 254, 0.1);
+        }
+        .cell-decode .cell-header label {
+            color: #4facfe;
+        }
+
+        .cell-decoded textarea {
+            border-color: rgba(79, 172, 254, 0.08);
+        }
+        .cell-decoded .cell-header label {
+            color: rgba(79, 172, 254, 0.6);
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 0 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            margin: 10px 0 12px;
+            flex-wrap: wrap;
+        }
+
+        .action-row .btn {
+            padding: 6px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-row .btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.65);
+            transform: translateY(-1px);
+        }
+
+        .action-row .btn.copy {
+            background: rgba(46, 213, 115, 0.08);
+            border-color: rgba(46, 213, 115, 0.12);
+            color: #2ed573;
+        }
+
+        .action-row .btn.copy:hover {
+            background: rgba(46, 213, 115, 0.15);
+        }
+
+        .action-row .btn.share {
+            background: rgba(79, 172, 254, 0.08);
+            border-color: rgba(79, 172, 254, 0.12);
+            color: #4facfe;
+        }
+
+        .action-row .btn.share:hover {
+            background: rgba(79, 172, 254, 0.15);
+        }
+
+        .action-row .btn.clear {
+            background: rgba(233, 69, 96, 0.06);
+            border-color: rgba(233, 69, 96, 0.08);
+            color: rgba(233, 69, 96, 0.6);
+        }
+
+        .action-row .btn.clear:hover {
+            background: rgba(233, 69, 96, 0.12);
+            color: #e94560;
+            border-color: rgba(233, 69, 96, 0.12);
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            padding: 6px 0 2px;
+            align-items: center;
+        }
+
+        .options .option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 10px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .options .option:hover {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .options .option input[type="checkbox"] {
+            width: 13px;
+            height: 13px;
+            accent-color: #2ed573;
+            cursor: pointer;
+        }
+
+        .options .option input[type="text"] {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 5px;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 2px 8px;
+            font-size: 10px;
+            width: 100px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .options .option input[type="text"]:focus {
+            outline: none;
+            border-color: rgba(46, 213, 115, 0.2);
+        }
+
+        .options .option input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: auto;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 10px;
+        }
+
+        .live-indicator .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #e94560;
+            transition: background 0.3s ease;
+        }
+
+        .live-indicator .dot.active {
+            background: #2ed573;
+            animation: pulseDot 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .footer {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 10px;
+            letter-spacing: 0.8px;
+            font-weight: 500;
+        }
+
+        .footer .version {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .footer .version strong {
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 600;
+        }
+
+        /* ===== MODALE DECODE ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-box {
+            background: rgba(26, 26, 46, 0.95);
+            border-radius: 24px;
+            padding: 35px 40px 30px;
+            max-width: 560px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .modal-box .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-box .modal-header h2 {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-box .modal-header h2 span {
+            color: #2ed573;
+        }
+
+        .modal-box .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            padding: 4px 8px;
+        }
+
+        .modal-box .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-box .modal-content {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-box .modal-result {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px 18px;
+            color: #fff;
+            font-size: 15px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            min-height: 50px;
+            white-space: pre-wrap;
+        }
+
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .modal-box .modal-actions .btn-modal {
+            padding: 8px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            flex: 1;
+        }
+
+        .modal-box .modal-actions .btn-modal:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .modal-box .modal-actions .btn-modal.copy {
+            background: rgba(46, 213, 115, 0.08);
+            border-color: rgba(46, 213, 115, 0.12);
+            color: #2ed573;
+        }
+
+        .modal-box .modal-actions .btn-modal.copy:hover {
+            background: rgba(46, 213, 115, 0.15);
+        }
+
+        .modal-box .modal-actions .btn-modal.close-btn {
+            background: rgba(233, 69, 96, 0.06);
+            border-color: rgba(233, 69, 96, 0.08);
+            color: rgba(233, 69, 96, 0.6);
+        }
+
+        .modal-box .modal-actions .btn-modal.close-btn:hover {
+            background: rgba(233, 69, 96, 0.12);
+            color: #e94560;
+        }
+
+        /* ===== MODALE PASSWORD ===== */
+        .modal-box .password-input-group {
+            margin: 12px 0;
+        }
+
+        .modal-box .password-input-group label {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .modal-box .password-input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .modal-box .password-input-group input:focus {
+            outline: none;
+            border-color: rgba(46, 213, 115, 0.2);
+        }
+
+        .modal-box .password-input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-box .password-error {
+            color: #e94560;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .modal-box .password-error.show {
+            display: block;
+        }
+
+        .modal-box .password-required-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(233, 69, 96, 0.12);
+            color: #e94560;
+            border: 1px solid rgba(233, 69, 96, 0.15);
+            margin-left: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            font-size: 12px;
+            z-index: 100000;
+            animation: toastIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            font-family: 'Segoe UI', sans-serif;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .toast-error {
+            background: rgba(233, 69, 96, 0.9);
+        }
+
+        .toast-success {
+            background: rgba(46, 213, 115, 0.9);
+        }
+
+        .toast-info {
+            background: rgba(79, 172, 254, 0.9);
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(40px) scale(0.95); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        .toast-hide {
+            animation: toastOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateX(40px) scale(0.95); }
+        }
+
+        @media (max-width: 700px) {
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .grid .cell textarea {
+                min-height: 90px;
+            }
+            .container {
+                padding: 20px 16px 16px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .action-row .btn {
+                padding: 5px 12px;
+                font-size: 10px;
+            }
+            .modal-box {
+                padding: 25px 20px 20px;
+            }
+            .options .option input[type="text"] {
+                width: 70px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 14px 10px 12px;
+            }
+            .header h1 {
+                font-size: 15px;
+            }
+            .grid .cell textarea {
+                min-height: 70px;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            .action-row .btn {
+                padding: 4px 10px;
+                font-size: 9px;
+            }
+            .options .option {
+                font-size: 9px;
+            }
+            .options .option input[type="text"] {
+                width: 60px;
+                font-size: 9px;
+            }
+            .footer .version {
+                font-size: 8px;
+                padding: 2px 8px;
+            }
+            .modal-box .modal-result {
+                font-size: 13px;
+                padding: 12px 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== PARTICLES ===== -->
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <span class="logo-icon">🔐</span>
+                <h1>Base64 <span>Encoder</span> <span class="slash">/</span> <span class="decoder-text">Decoder</span></h1>
+            </div>
+            <div class="subtitle">Encode or decode your data in real-time</div>
+            <span class="badge">⚡ Live</span>
+            <div class="divider"></div>
+        </div>
+
+        <div class="grid">
+            <div class="cell cell-encode">
+                <div class="cell-header">
+                    <label>📝 Encode</label>
+                    <span class="char-count"><span id="input-count">0</span> chars</span>
+                </div>
+                <textarea id="input-text" placeholder="Type or paste to encode..." spellcheck="false"></textarea>
+            </div>
+
+            <div class="cell cell-encoded">
+                <div class="cell-header">
+                    <label>📋 Encoded</label>
+                    <span class="char-count"><span id="encoded-count">0</span> chars</span>
+                </div>
+                <textarea id="encoded-text" placeholder="Encoded result..." spellcheck="false" readonly></textarea>
+            </div>
+
+            <div class="cell cell-decode">
+                <div class="cell-header">
+                    <label>🔓 Decode</label>
+                    <span class="char-count"><span id="decode-input-count">0</span> chars</span>
+                </div>
+                <textarea id="decode-text" placeholder="Paste Base64 here..." spellcheck="false"></textarea>
+            </div>
+
+            <div class="cell cell-decoded">
+                <div class="cell-header">
+                    <label>✅ Decoded</label>
+                    <span class="char-count"><span id="decoded-count">0</span> chars</span>
+                </div>
+                <textarea id="decoded-text" placeholder="Decoded result..." spellcheck="false" readonly></textarea>
+            </div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn copy" id="copy-btn">📋 Copy</button>
+            <button class="btn share" id="share-btn">🔗 Share</button>
+            <button class="btn clear" id="clear-btn">🗑️ Clear</button>
+        </div>
+
+        <div class="options">
+            <label class="option">
+                <input type="checkbox" id="live-mode" checked>
+                ⚡ Live
+            </label>
+            <label class="option">
+                <input type="checkbox" id="url-safe">
+                🔗 URL-safe
+            </label>
+            <label class="option">
+                <span>🔑 Password:</span>
+                <input type="text" id="share-password" placeholder="(optional)">
+            </label>
+            <div class="live-indicator">
+                <span class="dot active" id="live-dot"></span>
+                <span id="live-status">Live ON</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span class="version"><strong>⚡</strong> Base64 Tool <strong>•</strong> Pippo Edition</span>
+        </div>
+    </div>
+
+    <!-- ===== MODALE DECODE ===== -->
+    <div class="modal-overlay" id="decode-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>🔓 Decoded <span>Content</span></h2>
+                <button class="modal-close" id="modal-close">✕</button>
+            </div>
+            <div class="modal-content" id="modal-content">This is the decoded content from the shared link:</div>
+
+            <!-- Password input (hidden by default) -->
+            <div class="password-input-group" id="password-group" style="display:none;">
+                <label>🔑 Enter password to unlock:</label>
+                <input type="password" id="modal-password" placeholder="Enter password...">
+                <div class="password-error" id="password-error">❌ Wrong password. Try again.</div>
+            </div>
+
+            <div class="modal-result" id="modal-result"></div>
+            <div class="modal-actions">
+                <button class="btn-modal copy" id="modal-copy">📋 Copy</button>
+                <button class="btn-modal close-btn" id="modal-close-btn">✕ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  BASE64 ENCODER / DECODER - CON PASSWORD PER DECODE
+        // ============================================================
+
+        console.log('🔐 Base64 Encoder/Decoder v3.7 loaded!');
+
+        // ===== PARTICLES =====
+        (function createParticles() {
+            var container = document.getElementById('particles');
+            var count = 50;
+            var colors = [
+                'rgba(46, 213, 115, 0.35)',
+                'rgba(79, 172, 254, 0.25)',
+                'rgba(255, 255, 255, 0.15)',
+                'rgba(102, 126, 234, 0.25)'
+            ];
+
+            for (var i = 0; i < count; i++) {
+                var particle = document.createElement('div');
+                particle.className = 'particle';
+                var size = Math.random() * 3 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = Math.random() * 100 + '%';
+                var duration = Math.random() * 17 + 10;
+                particle.style.animationDuration = duration + 's';
+                var delay = Math.random() * 3;
+                particle.style.animationDelay = delay + 's';
+                particle.style.opacity = Math.random() * 0.3 + 0.1;
+                container.appendChild(particle);
+            }
+        })();
+
+        // ===== DOM ELEMENTS =====
+        var inputText = document.getElementById('input-text');
+        var encodedText = document.getElementById('encoded-text');
+        var decodeText = document.getElementById('decode-text');
+        var decodedText = document.getElementById('decoded-text');
+
+        var inputCount = document.getElementById('input-count');
+        var encodedCount = document.getElementById('encoded-count');
+        var decodeInputCount = document.getElementById('decode-input-count');
+        var decodedCount = document.getElementById('decoded-count');
+
+        var copyBtn = document.getElementById('copy-btn');
+        var shareBtn = document.getElementById('share-btn');
+        var clearBtn = document.getElementById('clear-btn');
+
+        var liveMode = document.getElementById('live-mode');
+        var urlSafe = document.getElementById('url-safe');
+        var sharePassword = document.getElementById('share-password');
+        var liveDot = document.getElementById('live-dot');
+        var liveStatus = document.getElementById('live-status');
+
+        // ===== MODALE =====
+        var modal = document.getElementById('decode-modal');
+        var modalResult = document.getElementById('modal-result');
+        var modalContent = document.getElementById('modal-content');
+        var modalClose = document.getElementById('modal-close');
+        var modalCloseBtn = document.getElementById('modal-close-btn');
+        var modalCopy = document.getElementById('modal-copy');
+        var passwordGroup = document.getElementById('password-group');
+        var modalPassword = document.getElementById('modal-password');
+        var passwordError = document.getElementById('password-error');
+
+        var storedDecodedText = '';
+        var storedPassword = '';
+
+        function openModal(text, password) {
+            storedDecodedText = text || '';
+            storedPassword = password || '';
+
+            modalResult.textContent = '';
+            passwordError.classList.remove('show');
+            modalPassword.value = '';
+
+            if (password) {
+                passwordGroup.style.display = 'block';
+                modalContent.textContent = '🔒 This content is password protected. Enter the password to view it:';
+                modalResult.textContent = '🔒 Locked';
+                modalPassword.focus();
+                modalPassword.addEventListener('keydown', onPasswordKeydown);
+                document.getElementById('modal-copy').style.display = 'none';
+            } else {
+                passwordGroup.style.display = 'none';
+                modalContent.textContent = 'This is the decoded content from the shared link:';
+                modalResult.textContent = text || '(empty)';
+                document.getElementById('modal-copy').style.display = 'flex';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function onPasswordKeydown(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        }
+
+        function checkPassword() {
+            var entered = modalPassword.value.trim();
+            if (entered === storedPassword) {
+                passwordError.classList.remove('show');
+                passwordGroup.style.display = 'none';
+                modalResult.textContent = storedDecodedText;
+                modalContent.textContent = '✅ This is the decoded content from the shared link:';
+                document.getElementById('modal-copy').style.display = 'flex';
+                showToast('✅ Unlocked!', 'success');
+            } else {
+                passwordError.classList.add('show');
+                modalPassword.value = '';
+                modalPassword.focus();
+                showToast('❌ Wrong password!', 'error');
+            }
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            if (modalPassword) {
+                modalPassword.removeEventListener('keydown', onPasswordKeydown);
+            }
+        }
+
+        modalClose.addEventListener('click', closeModal);
+        modalCloseBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeModal();
+        });
+
+        modalCopy.addEventListener('click', function() {
+            var text = modalResult.textContent;
+            if (!text || text === '(empty)' || text === '🔒 Locked') {
+                showToast('❌ Nothing to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(function() {
+                showToast('📋 Copied!', 'success');
+            }).catch(function() {
+                var range = document.createRange();
+                range.selectNode(modalResult);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                showToast('📋 Copied!', 'success');
+            });
+        });
+
+        // ===== TOAST =====
+        function showToast(message, type) {
+            type = type || 'success';
+            var oldToasts = document.querySelectorAll('.toast');
+            oldToasts.forEach(function(t) {
+                t.classList.add('toast-hide');
+                setTimeout(function() { t.remove(); }, 500);
+            });
+
+            var toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.classList.add('toast-hide');
+                setTimeout(function() { toast.remove(); }, 500);
+            }, 2800);
+        }
+
+        // ===== BASE64 FUNCTIONS =====
+        function toBase64(str) {
+            try {
+                return btoa(unescape(encodeURIComponent(str)));
+            } catch (e) {
+                return btoa(str);
+            }
+        }
+
+        function fromBase64(str) {
+            try {
+                return decodeURIComponent(escape(atob(str)));
+            } catch (e) {
+                return atob(str);
+            }
+        }
+
+        function toBase64URL(str) {
+            return toBase64(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function fromBase64URL(str) {
+            var base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) {
+                base64 += '=';
+            }
+            return fromBase64(base64);
+        }
+
+        // ===== UPDATE COUNTS =====
+        function updateCounts() {
+            inputCount.textContent = inputText.value.length;
+            encodedCount.textContent = encodedText.value.length;
+            decodeInputCount.textContent = decodeText.value.length;
+            decodedCount.textContent = decodedText.value.length;
+        }
+
+        // ===== PROCESS FUNCTIONS =====
+        function processEncode() {
+            var input = inputText.value;
+            if (!input) {
+                encodedText.value = '';
+                updateCounts();
+                return;
+            }
+            try {
+                var useUrlSafe = urlSafe.checked;
+                var result = useUrlSafe ? toBase64URL(input) : toBase64(input);
+                encodedText.value = result;
+            } catch (e) {
+                encodedText.value = '❌ Error: ' + e.message;
+            }
+            updateCounts();
+        }
+
+        function processDecode() {
+            var input = decodeText.value;
+            if (!input) {
+                decodedText.value = '';
+                updateCounts();
+                return;
+            }
+            try {
+                var useUrlSafe = urlSafe.checked;
+                var result = useUrlSafe ? fromBase64URL(input) : fromBase64(input);
+                decodedText.value = result;
+            } catch (e) {
+                decodedText.value = '❌ Error: ' + e.message;
+            }
+            updateCounts();
+        }
+
+        function processAll() {
+            processEncode();
+            processDecode();
+        }
+
+        // ===== LIVE MODE TOGGLE =====
+        function updateLiveIndicator() {
+            var isLive = liveMode.checked;
+            liveDot.className = 'dot' + (isLive ? ' active' : '');
+            liveStatus.textContent = isLive ? 'Live ON' : 'Live OFF';
+        }
+
+        liveMode.addEventListener('change', function() {
+            updateLiveIndicator();
+            if (liveMode.checked) {
+                processAll();
+            }
+        });
+
+        // ===== INPUT EVENTS =====
+        inputText.addEventListener('input', function() {
+            if (liveMode.checked) {
+                processEncode();
+            }
+            updateCounts();
+        });
+
+        decodeText.addEventListener('input', function() {
+            if (liveMode.checked) {
+                processDecode();
+            }
+            updateCounts();
+        });
+
+        // ===== URL-SAFE CHANGE =====
+        urlSafe.addEventListener('change', function() {
+            if (liveMode.checked) processAll();
+        });
+
+        // ===== COPY =====
+        copyBtn.addEventListener('click', function() {
+            var output = encodedText.value || decodedText.value;
+            if (!output) {
+                showToast('❌ Nothing to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output).then(function() {
+                showToast('📋 Copied!', 'success');
+            }).catch(function() {
+                if (encodedText.value) {
+                    encodedText.select();
+                    document.execCommand('copy');
+                } else {
+                    decodedText.select();
+                    document.execCommand('copy');
+                }
+                showToast('📋 Copied!', 'success');
+            });
+        });
+
+        // ===== SHARE =====
+        shareBtn.addEventListener('click', function() {
+            var encoded = encodedText.value;
+            var password = sharePassword.value.trim();
+
+            if (!encoded) {
+                showToast('❌ Nothing to share. Write something in Encode first.', 'error');
+                return;
+            }
+
+            var data = { b: encoded };
+            if (urlSafe.checked) data.u = '1';
+            if (password) data.p = password;
+
+            var json = JSON.stringify(data);
+            var encodedData = toBase64URL(json);
+
+            var currentUrl = window.location.href.split('?')[0].split('#')[0];
+            var shareUrl = currentUrl + '?data=' + encodedData;
+
+            navigator.clipboard.writeText(shareUrl).then(function() {
+                if (password) {
+                    showToast('🔗 Link copied! Password protected.', 'success');
+                } else {
+                    showToast('🔗 Link copied!', 'success');
+                }
+            }).catch(function() {
+                prompt('Copy this link to share:', shareUrl);
+                showToast('🔗 Link generated!', 'info');
+            });
+        });
+
+        // ===== CARICA LINK CONDIVISO =====
+        function loadSharedData() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var dataParam = urlParams.get('data');
+
+            if (!dataParam) return;
+
+            try {
+                var json = fromBase64URL(dataParam);
+                var data = JSON.parse(json);
+
+                if (data.b) {
+                    var password = data.p || '';
+                    var decoded = fromBase64(data.b);
+
+                    if (password) {
+                        openModal(decoded, password);
+                    } else {
+                        openModal(decoded);
+                    }
+                }
+
+                if (data.u === '1') {
+                    urlSafe.checked = true;
+                }
+
+                if (window.history && window.history.replaceState) {
+                    var cleanUrl = window.location.href.split('?')[0];
+                    window.history.replaceState({}, document.title, cleanUrl);
+                }
+            } catch (e) {
+                console.warn('Invalid shared data:', e);
+                openModal('❌ Error: Invalid or corrupted data.');
+            }
+        }
+
+        // ===== CLEAR =====
+        clearBtn.addEventListener('click', function() {
+            inputText.value = '';
+            encodedText.value = '';
+            decodeText.value = '';
+            decodedText.value = '';
+            sharePassword.value = '';
+            updateCounts();
+            showToast('🗑️ Cleared!', 'info');
+        });
+
+        // ===== KEYBOARD SHORTCUTS =====
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (modal.classList.contains('active')) {
+                    closeModal();
+                } else {
+                    clearBtn.click();
+                }
+            }
+        });
+
+        // ===== ANTI-DEVTOOLS =====
+        (function antiDevTools() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12') { e.preventDefault(); return false; }
+                if (e.ctrlKey && e.shiftKey && ['I', 'J'].includes(e.key.toUpperCase())) { e.preventDefault(); return false; }
+                if (e.ctrlKey && ['U', 'S'].includes(e.key.toUpperCase())) { e.preventDefault(); return false; }
+            });
+            document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+        })();
+
+        // ===== INIT =====
+        updateLiveIndicator();
+        processAll();
+        updateCounts();
+        loadSharedData();
+
+        console.log('✅ Live mode: ' + (liveMode.checked ? 'ON' : 'OFF'));
+        console.log('📝 Write in Encode → Encoded appears');
+        console.log('🔓 Write in Decode → Decoded appears');
+        console.log('🔗 Share button with optional password protection');
+    </script>
+
+</body>
+</html>
